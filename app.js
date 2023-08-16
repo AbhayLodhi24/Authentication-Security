@@ -8,6 +8,7 @@ const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oidc');
+const FacebookStrategy = require('passport-facebook');
 
 const app = express();
 
@@ -29,7 +30,9 @@ mongoose.connect("mongodb://127.0.0.1:27017/userDB");
 const userSchema = new mongoose.Schema({
     email : String,
     password : String,
-    googleId : String
+    googleId : String,
+    facebookId : String,
+    secret : String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -83,6 +86,35 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+passport.use(new FacebookStrategy({
+    clientID: process.env['FACEBOOK_APP_ID'],
+    clientSecret: process.env['FACEBOOK_APP_SECRET'],
+    callbackURL: 'http://localhost:3000/auth/facebook/secrets'
+  },
+  function(accessToken, refreshToken, profile, done) {
+    console.log(profile);
+
+    User.findOne({ facebookId : profile.id})
+    .then(function(user) {
+        if (!user) {
+          const newUser = new User({
+            facebookId: profile.id
+          });
+
+          return newUser.save();
+        } else {
+          return user;
+        }
+      })
+      .then(function(user) {
+        done(null, user);
+      })
+      .catch(function(err) {
+        done(err);
+      });
+  }
+));
+
 app.get("/" , function(req , res){
     res.render("home");
 });
@@ -91,10 +123,20 @@ app.get("/auth/google" , passport.authenticate("google",{
     scope: [ 'profile' ]
   }));
 
+app.get('/auth/facebook', passport.authenticate('facebook', {
+    scope: [ 'profile' ]
+  }));  
+
   app.get("/auth/google/secrets",
   passport.authenticate("google", { failureRedirect: "/login"}),
   function(req, res) {
     res.redirect("/secrets");
+  });
+
+  app.get('/auth/facebook/secrets',
+  passport.authenticate('facebook', { failureRedirect: '/login'}),
+  function(req, res) {
+    res.redirect('/secrets');
   });
 
 app.get("/login" , function(req , res){
@@ -106,9 +148,19 @@ app.get("/register" , function(req , res){
 });
 
 app.get("/secrets" , function(req ,res){
+    User.find({"secret": {$ne : null}})
+    .then(function(foundUsers){
+        if(foundUsers)
+        {
+            res.render("secrets", {usersWithSecrets : foundUsers});
+        }
+    }).catch((err)=>{console.log(err) });
+});
+
+app.get("/submit", function(req ,res){
     if(req.isAuthenticated())
     {
-        res.render("secrets");
+        res.render("submit");
     }
     else
     {
@@ -163,6 +215,24 @@ app.post("/login", function(req ,res){
     });
 });
 
+app.post("/submit", function(req, res){
+    const userSecret = req.body.secret ;
+    console.log(req.user.id);
+    User.findById(req.user.id)
+    .then((foundUser)=>{
+        if(foundUser)
+        {
+            foundUser.secret = userSecret;
+            foundUser.save().then(function(){
+                res.redirect("/secrets");
+            });
+        }
+    }).catch((err)=>{
+        console.log(err);
+    });
+});
+
 app.listen("3000", function(){
     console.log("Server running on port 3000");
 });
+
