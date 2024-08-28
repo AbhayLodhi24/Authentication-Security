@@ -15,7 +15,7 @@
 - MongoDB
 ---
 ## How to run on your System
-- Down the zip file
+- Download the zip file
 - Open in VS code
 - npm install
 - make your mongodb connection
