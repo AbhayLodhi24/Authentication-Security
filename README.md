@@ -1,8 +1,8 @@
 # Secrets
+- Implemented different levels of security like encryption , hashing , handing and salting, bcrypt method and Log-in with google.
+- User-friendly .
+- Secure environment.
 ---
--Implemented different levels of security like encryption , use of environment variables , hashing , handing and salting, bcrypt method and Log in with google.
--User-friendly .
--Secure environment.
 
 ## Live Link : https://secrets-cup7.onrender.com/
 ## Tech stack
